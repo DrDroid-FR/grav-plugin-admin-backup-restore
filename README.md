@@ -19,7 +19,7 @@ A Grav CMS plugin that adds **restore functionality** to the admin backup page. 
 
 ### Manual Installation
 
-1. Download the [latest release](https://github.com/DrDroid-FR/grav-admin-backup-restore/releases)
+1. Download the [latest release](https://github.com/DrDroid-FR/grav-plugin-admin-backup-restore/releases)
 2. Extract the archive to `user/plugins/`
 3. Rename the folder to `admin-backup-restore`
 4. Clear the Grav cache
@@ -29,7 +29,7 @@ A Grav CMS plugin that adds **restore functionality** to the admin backup page. 
 Use the gpm direct-install command: 
 
 ```bash
-bin/gpm direct-install https://github.com/DrDroid-FR/grav-admin-backup-restore/releases/latest/download/admin-backup-restore.zip
+bin/gpm direct-install https://github.com/DrDroid-FR/grav-plugin-admin-backup-restore/releases/latest/download/admin-backup-restore.zip
 ```
 
 ## Configuration
@@ -87,7 +87,7 @@ This will exclude:
 
 ## Support
 
-- **Issues:** https://github.com/DrDroid-FR/grav-admin-backup-restore/issues
+- **Issues:** https://github.com/DrDroid-FR/grav-plugin-admin-backup-restore/issues
 - **Author:** Julien Perret <gravdev@drdroid.fr>
 - **GitHub:** https://github.com/DrDroid-FR
 
