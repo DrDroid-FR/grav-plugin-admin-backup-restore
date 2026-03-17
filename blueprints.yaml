@@ -1,0 +1,70 @@
+name: Admin Backup Restore
+slug: admin-backup-restore
+type: plugin
+version: 1.0.0
+description: Adds restore functionality to the Grav Admin backup page with automatic backup before restore
+icon: refresh
+author:
+  name: Julien Perret
+  email: gravdev@drdroid.fr
+  url: https://github.com/DrDroid-FR
+homepage: https://github.com/DrDroid-FR/admin-backup-restore
+keywords: grav, plugin, backup, restore, admin
+bugs: https://github.com/DrDroid-FR/admin-backup-restore/issues
+license: MIT
+
+dependencies:
+  - admin
+  - backup
+
+form:
+  validation: loose
+  fields:
+    enabled:
+      type: toggle
+      label: Plugin Enabled
+      highlight: 1
+      default: 1
+      options:
+        1: Yes
+        0: No
+      validate:
+        type: bool
+
+    pre_restore_backup:
+      type: toggle
+      label: Create Automatic Backup Before Restore
+      highlight: 1
+      default: 1
+      options:
+        1: Yes
+        0: No
+      validate:
+        type: bool
+      help: Creates a backup of the current site state before restoring
+
+    restore_confirm_message:
+      type: text
+      label: Restore Confirmation Message
+      default: "Are you sure you want to restore this backup? A backup of the current site will be created first."
+      validate:
+        type: text
+      help: Message shown to user before restoring
+
+    permissions:
+      type: select
+      label: Required Permissions
+      default: admin.super
+      options:
+        admin.super: Super Administrator
+        admin.maintenance: Maintenance (and above)
+      validate:
+        type: string
+
+    exclude_folders:
+      type: text
+      label: Folders to Exclude from Pre-Restore Backup
+      default: "backup, cache, images, logs, tmp"
+      validate:
+        type: text
+      help: Comma-separated list of folders to exclude. Use path format for subfolders (e.g., user/images/thumbs)
