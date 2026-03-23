@@ -4,16 +4,17 @@
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Author](https://img.shields.io/badge/author-Julien%20Perret-blue.svg)
 
-A Grav CMS plugin that adds **restore functionality** to the admin backup page. Easily restore your site from any backup with automatic pre-restore backup creation.
+A Grav CMS plugin that adds **restore functionality** to the admin backup page. Easily restore your site from any backup within the admin plugin with automatic pre-restore backup creation.
 
 ## Features
 
 - ↺ **Restore Button** - Add restore buttons to each backup in the admin backup page
 - 🔒 **Automatic Pre-Restore Backup** - Creates a backup before restoring (excludes cache, images, logs, tmp, backup folders)
-- ⚡ **Smart Detection** - Skips pre-restore backup when restoring a pre-restore backup
-- 🎨 **Visual Distinction** - Grey buttons for pre-restore backups, blue for regular backups
-- 🌐 **Bilingual** - Full support for English and French
+- ⚡ **Smart Detection** - Skips pre-restore backup when restoring another pre-restore backup
+- 🎨 **Visual Distinction** - Grey buttons for restoring pre-restore backups, blue for regular backups
 - ✨ **Beautiful UI** - Modal overlay with blur effect during restore process
+- 🌐 **Bilingual** - Full support for English and French
+- ❌ **File and Folder Exclusion** - Exclude files and folders from pre-restore backups
 
 ## Installation
 
@@ -39,7 +40,7 @@ After installation, go to **Plugins** → **Admin Backup Restore** to configure:
 | Option | Description | Default |
 |--------|-------------|---------|
 | Plugin Enabled | Enable/disable the plugin | Yes |
-| Create Automatic Backup | Create backup before restore | Yes |
+| Create Automatic Backup | Create a pre-restore backup before restore | Yes |
 | Required Permissions | Who can restore backups | Super Admin |
 | Folders to Exclude | Comma-separated folders to exclude from pre-restore backup | backup, cache, images, logs, tmp |
 
@@ -53,8 +54,8 @@ After installation, go to **Plugins** → **Admin Backup Restore** to configure:
 
 ### Visual Button Indicators
 
-- 🔵 **Blue button** - Regular backup (will create pre-restore backup)
-- ⚫ **Grey button** - Pre-restore backup (skips pre-restore backup creation)
+- 🔵 **Blue button** - Restore regular backup (will create pre-restore backup)
+- ⚫ **Grey button** - Restore Pre-restore backup (skips pre-restore backup creation)
 
 ## Excluded Folders
 
