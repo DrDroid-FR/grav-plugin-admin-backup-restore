@@ -2,7 +2,7 @@
 
 ![Grav Version](https://img.shields.io/badge/Grav-1.7+-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
-![Author](https://img.shields.io/badge/author-Julien%20Perret-blue.svg)
+![Author](https://img.shields.io/badge/author-Dr%20Droid-blue.svg)
 
 A Grav CMS plugin that adds **restore functionality** to the admin backup page. Easily restore your site from any backup within the admin plugin with automatic pre-restore backup creation.
 
@@ -91,6 +91,10 @@ This will exclude:
 - **Issues:** https://github.com/DrDroid-FR/grav-plugin-admin-backup-restore/issues
 - **Author:** Julien Perret <gravdev@drdroid.fr>
 - **GitHub:** https://github.com/DrDroid-FR
+
+## TO-DO
+
+My initial release is using a PHP ZipArchive because it was coded for my own personal use, I need to use the GRAV's native archiver.
 
 ## License
 
