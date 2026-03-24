@@ -30,7 +30,7 @@ A Grav CMS plugin that adds **restore functionality** to the admin backup page. 
 Use the gpm direct-install command: 
 
 ```bash
-bin/gpm direct-install https://github.com/DrDroid-FR/grav-plugin-admin-backup-restore/releases/latest/download/admin-backup-restore.zip
+bin/gpm direct-install https://github.com/DrDroid-FR/grav-plugin-admin-backup-restore/releases/download/v1.0.0-beta.1/backup-restore-main.zip
 ```
 
 ## Configuration
