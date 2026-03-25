@@ -6,7 +6,7 @@
  * Adds restore functionality to the Grav Admin backup page
  * 
  * @package Grav\Plugin\AdminBackupRestorePlugin
- * @version 1.0.0
+ * @version 1.1.0
  * @author  Julien Perret <gravdev@drdroid.fr>
  * @license MIT
  * @github   https://github.com/DrDroid-FR
@@ -16,6 +16,7 @@ namespace Grav\Plugin;
 
 use Grav\Common\Cache;
 use Grav\Common\Filesystem\Archiver;
+use Grav\Common\Filesystem\Folder;
 use Grav\Common\Grav;
 use Grav\Common\Plugin;
 use Grav\Common\Utils;
@@ -162,16 +163,31 @@ JS;
                 return;
             }
 
+            // Get paths
+            $root_path = GRAV_ROOT;
+            
+            // Remove .git folder if exists (can cause permission issues on restore)
+            $git_path = $root_path . DS . '.git';
+            $git_removed = false;
+            if (is_dir($git_path)) {
+                if ($this->config->get('plugins.admin-backup-restore.debug', false)) {
+                    $grav['log']->debug('[AdminBackupRestore] Removing .git folder before restore');
+                }
+                Folder::delete($git_path);
+                $git_removed = true;
+            }
+
             // Step 1: Create automatic backup before restore (unless restoring a pre_restore_backup)
             $backup_dir = $locator->findResource('backup://', true, true);
-            $root_path = GRAV_ROOT;
             
             // Check if we're restoring a pre_restore_backup - if so, skip creating another pre-restore backup
             $is_pre_restore = (strpos($filename, 'pre_restore_backup') !== false);
             
             $status_message = '';
+            $progress = 'started';
             
             if (!$is_pre_restore) {
+                $progress = 'creating_backup';
                 $date = date('YmdHis', time());
                 $pre_restore_filename = 'pre_restore_backup--' . $date . '.zip';
                 $pre_restore_destination = $backup_dir . DS . $pre_restore_filename;
@@ -180,23 +196,35 @@ JS;
                 $config = $this->config->get('plugins.admin-backup-restore.exclude_folders', 'backup, cache, images, logs, tmp');
                 $exclude_folders = array_map('trim', explode(',', $config));
                 
-                // Use ZipArchive directly for the backup
-                $zip = new \ZipArchive();
-                if ($zip->open($pre_restore_destination, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === TRUE) {
-                    $this->addFolderToZip($root_path, $zip, $root_path, $exclude_folders);
-                    $zip->close();
-                    $grav['log']->notice('Pre-restore backup created: ' . $pre_restore_destination);
-                    $status_message = ' Pre-restore backup created: ' . $pre_restore_filename;
-                } else {
-                    $status_message = ' (Warning: could not create pre-restore backup)';
-                }
+                // Use GRAV's native Archiver to create the backup
+                $options = [
+                    'exclude_files' => [],
+                    'exclude_paths' => $exclude_folders,
+                ];
+                
+                $archiver = Archiver::create('zip');
+                $archiver->setArchive($pre_restore_destination)->setOptions($options)->compress($root_path);
+                
+                $grav['log']->notice('Pre-restore backup created: ' . $pre_restore_destination);
+                $status_message = ' Pre-restore backup created: ' . $pre_restore_filename;
             } else {
                 $status_message = ' (Restoring a pre-restore backup - no new pre-restore backup created)';
             }
 
             // Step 2: Extract the selected backup
+            $progress = 'restoring';
+            
+            // Extract to temp folder first, then copy excluding .git to avoid permission issues
+            $temp_extract = $root_path . DS . 'temp_restore_' . time();
+            
             $archiver = Archiver::create('zip');
-            $archiver->setArchive($backup_file)->extract($root_path);
+            $archiver->setArchive($backup_file)->extract($temp_extract);
+            
+            // Copy files from temp to root, excluding .git folder (case-insensitive)
+            $this->copyExcludeGit($temp_extract, $root_path);
+            
+            // Clean up temp directory
+            Folder::delete($temp_extract);
             
             // Log the restore
             $grav['log']->notice('Backup restored from: ' . $backup_file);
@@ -204,59 +232,29 @@ JS;
             // Clear cache after restore
             Cache::clearCache('all');
             
+            // Add message if .git was removed
+            if ($git_removed) {
+                $status_message .= ' (.git folder was reset for compatibility)';
+            }
+            
+            $progress = 'complete';
+            
             $this->jsonResponse([
                 'status' => 'success',
-                'message' => 'Restore complete!' . $status_message
+                'message' => 'Restore complete!',
+                'details' => trim($status_message),
+                'progress' => $progress
             ]);
             
         } catch (\Exception $e) {
+            // Log the error for debugging
+            $grav['log']->error('[AdminBackupRestore] Backup restore failed: ' . $e->getMessage());
+            
             $this->jsonResponse([
                 'status' => 'error',
-                'message' => 'Restore failed. Check the logs for details.'
+                'message' => 'Restore failed: ' . $e->getMessage()
             ]);
         }
-    }
-
-    /**
-     * Add a folder and its contents to a ZipArchive
-     * 
-     * @param string $folder The folder to add
-     * @param \ZipArchive $zip The ZipArchive instance
-     * @param string $basePath The base path for relative paths
-     * @param array $exclude_folders Folders to exclude from the backup
-     */
-    protected function addFolderToZip($folder, &$zip, $basePath, $exclude_folders = []) {
-        $dir = dir($folder);
-        while (false !== $entry = $dir->read()) {
-            if ($entry == '.' || $entry == '..') continue;
-            
-            $fullPath = $folder . DS . $entry;
-            $relativePath = str_replace($basePath . DS, '', $fullPath);
-            $relativePath = str_replace('\\', '/', $relativePath); // Normalize path separators
-            
-            // Check if this path or any parent path should be excluded
-            $shouldExclude = false;
-            foreach ($exclude_folders as $excluded) {
-                $excluded = str_replace('\\', '/', trim($excluded));
-                // Check if relative path starts with excluded path
-                if ($relativePath === $excluded || strpos($relativePath, $excluded . '/') === 0) {
-                    $shouldExclude = true;
-                    break;
-                }
-            }
-            
-            if ($shouldExclude) {
-                continue;
-            }
-            
-            if (is_dir($fullPath)) {
-                $zip->addEmptyDir($relativePath);
-                $this->addFolderToZip($fullPath, $zip, $basePath, $exclude_folders);
-            } else {
-                $zip->addFile($fullPath, $relativePath);
-            }
-        }
-        $dir->close();
     }
 
     /**
@@ -267,5 +265,40 @@ JS;
         header('Content-Type: application/json');
         echo json_encode($data);
         exit;
+    }
+    
+    /**
+     * Copy files from source to destination, excluding .git folder
+     */
+    protected function copyExcludeGit($src, $dst)
+    {
+        $dir = opendir($src);
+        if (!is_dir($dst)) {
+            mkdir($dst, 0755, true);
+        }
+        
+        while (false !== ($file = readdir($dir))) {
+            // Skip . and ..
+            if ($file === '.' || $file === '..') {
+                continue;
+            }
+            
+            // Skip .git folder (case-insensitive to catch .Git, .GIT, etc.)
+            if (strtolower($file) === '.git') {
+                continue;
+            }
+            
+            $srcPath = $src . DS . $file;
+            $dstPath = $dst . DS . $file;
+            
+            if (is_dir($srcPath)) {
+                // Recursively copy subdirectories (except .git)
+                $this->copyExcludeGit($srcPath, $dstPath);
+            } else {
+                // Copy files
+                copy($srcPath, $dstPath);
+            }
+        }
+        closedir($dir);
     }
 }

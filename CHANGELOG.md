@@ -2,6 +2,24 @@
 
 All notable changes to this plugin will be documented in this file.
 
+## [1.1.0] - 2026-03-24
+
+### Added
+- Real-time progress updates during restore process
+- Support for progress tracking in JSON response
+- Enhanced modal design with details
+- Debug switch in configuration, see console
+
+### Changed
+- **Use of native GRAV function to create pre-restore backups.**
+- Confirmation modals and Pre-restore backup message now display message in two lines for better readability
+- Success notifications now show details like pre-restore backup filename.
+
+### Improved
+- Better user feedback during long restore operations
+- Clearer distinction between restore steps in UI
+- More informative success messages
+
 ## [1.0.0] - 2026-03-17
 
 ### Added

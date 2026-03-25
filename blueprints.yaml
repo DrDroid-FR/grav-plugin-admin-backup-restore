@@ -1,7 +1,7 @@
 name: Admin Backup Restore
 slug: admin-backup-restore
 type: plugin
-version: 1.0.0
+version: 1.1.0
 description: Adds restore functionality to the Grav Admin backup page with automatic backup before restore
 icon: refresh
 author:
@@ -68,3 +68,15 @@ form:
       validate:
         type: text
       help: Comma-separated list of folders to exclude. Use path format for subfolders (e.g., user/images/thumbs)
+
+    debug:
+      type: toggle
+      label: Enable Debug Logging
+      highlight: 0
+      default: 0
+      options:
+        1: Yes
+        0: No
+      validate:
+        type: bool
+      help: Enable detailed debug logging for troubleshooting

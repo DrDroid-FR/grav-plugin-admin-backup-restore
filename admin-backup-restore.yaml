@@ -3,3 +3,4 @@ pre_restore_backup: true
 restore_confirm_message: "Are you sure you want to restore this backup? A backup of the current site will be created automatically before restoring."
 permissions: admin.super
 exclude_folders: "backup, cache, images, logs, tmp"
+debug: true

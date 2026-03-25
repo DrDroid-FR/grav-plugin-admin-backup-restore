@@ -3,18 +3,20 @@
 ![Grav Version](https://img.shields.io/badge/Grav-1.7+-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Author](https://img.shields.io/badge/author-Dr%20Droid-blue.svg)
+![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)
 
-A Grav CMS plugin that adds **restore functionality** to the admin backup page. Easily restore your site from any backup within the admin plugin with automatic pre-restore backup creation.
+A Grav CMS plugin that adds **restore functionality** to the admin backup page. 
+Easily restore your site from any backup with automatic pre-restore backup creation.
 
 ## Features
 
 - ↺ **Restore Button** - Add restore buttons to each backup in the admin backup page
-- 🔒 **Automatic Pre-Restore Backup** - Creates a backup before restoring (excludes cache, images, logs, tmp, backup folders)
-- ⚡ **Smart Detection** - Skips pre-restore backup when restoring another pre-restore backup
-- 🎨 **Visual Distinction** - Grey buttons for restoring pre-restore backups, blue for regular backups
-- ✨ **Beautiful UI** - Modal overlay with blur effect during restore process
+- 🔒 **Automatic Pre-Restore Backup** - Creates a backup before restoring (excludes cache, images, logs, tmp, backup folders by default but you can add more in the configuration)
+- ⚡ **Smart Detection** - Skips pre-restore backup when restoring a pre-restore backup
+- 🎨 **Visual Distinction** - Grey buttons for pre-restore backups, blue for regular backups
 - 🌐 **Bilingual** - Full support for English and French
-- ❌ **File and Folder Exclusion** - Exclude files and folders from pre-restore backups
+- ✨ **Beautiful UI** - Modal overlay with blur effect during restore process
+- 📊 **Progress Updates** - Real-time progress messages during restore (Starting → Creating backup → Restoring → Complete) and success message
 
 ## Installation
 
@@ -30,7 +32,7 @@ A Grav CMS plugin that adds **restore functionality** to the admin backup page. 
 Use the gpm direct-install command: 
 
 ```bash
-bin/gpm direct-install https://github.com/DrDroid-FR/grav-plugin-admin-backup-restore/releases/download/v1.0.0-beta.1/backup-restore-main.zip
+bin/gpm direct-install https://github.com/DrDroid-FR/grav-plugin-admin-backup-restore/releases/latest/download/admin-backup-restore.zip
 ```
 
 ## Configuration
@@ -40,9 +42,10 @@ After installation, go to **Plugins** → **Admin Backup Restore** to configure:
 | Option | Description | Default |
 |--------|-------------|---------|
 | Plugin Enabled | Enable/disable the plugin | Yes |
-| Create Automatic Backup | Create a pre-restore backup before restore | Yes |
+| Create Automatic Backup | Create backup before restore | Yes |
 | Required Permissions | Who can restore backups | Super Admin |
 | Folders to Exclude | Comma-separated folders to exclude from pre-restore backup | backup, cache, images, logs, tmp |
+| Enable Debug Logging | Enable/disable Debug | No |
 
 ## Usage
 
@@ -54,23 +57,24 @@ After installation, go to **Plugins** → **Admin Backup Restore** to configure:
 
 ### Visual Button Indicators
 
-- 🔵 **Blue button** - Restore regular backup (will create pre-restore backup)
-- ⚫ **Grey button** - Restore Pre-restore backup (skips pre-restore backup creation)
+- 🔵 **Blue button** - Regular backup (will create pre-restore backup)
+- ⚫ **Grey button** - Pre-restore backup (skips pre-restore backup creation)
+
+### Restore Progress
+
+During the restore process, you'll see progress updates in real-time:
+1. **"Restore started..."** - Initial confirmation
+2. **"Creating pre-restore backup..."** - Automatic backup before restore (skipped for pre-restore backups)
+3. **"Restoring from backup..."** - The actual restore process
+4. **"Restore complete!"** - Success message
+
+The final success message displays additional details (pre-restore backup created, etc.)
 
 ## Excluded Folders
 
-The automatic pre-restore backup excludes these folders by default (configurable in plugin settings):
-- `/backup`
-- `/cache`
-- `/images`
-- `/logs`
-- `/tmp`
+The automatic pre-restore backup excludes standard folders by default but you can customize these exclusions in the plugin configuration page and even use subfolder exclusions
 
-You can customize these exclusions in the plugin configuration page.
-
-### Using Subfolder Exclusions
-
-You can also exclude subfolders using the path format. For example:
+For example:
 
 ```
 backup, cache, images, logs, tmp, user/images/thumbs, user/files/temp
@@ -91,10 +95,6 @@ This will exclude:
 - **Issues:** https://github.com/DrDroid-FR/grav-plugin-admin-backup-restore/issues
 - **Author:** Julien Perret <gravdev@drdroid.fr>
 - **GitHub:** https://github.com/DrDroid-FR
-
-## TO-DO
-
-My initial release is using a PHP ZipArchive because it was coded for my own personal use, I need to use the GRAV's native archiver.
 
 ## License
 

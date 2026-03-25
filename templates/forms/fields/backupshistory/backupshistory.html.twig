@@ -17,7 +17,7 @@
         {% set backup_restore = restore_url|replace({'%BACKUP_FILE': encoded_name}) %}
         <tr>
             <td>{{ loop.index }}</td>
-            <td> <i class="fa fa-clock-o"></i> {{ backup.date|date }}</td>
+            <td><i class="fa fa-clock-o"></i> {{ backup.date|date('M d, Y H:i') }}</td>
             <td>{{ backup.title }}</td>
             <td class="right pad">{{ backup.size|nicefilesize }}</td>
             <td class="right pad nowrap" >
@@ -28,7 +28,7 @@
         </tr>
     {% else %}
         <tr>
-            <td colspan="5" class="error" style="text-align: center;">{{ "PLUGIN_ADMIN.BACKUPS_NOT_GENERATED"|t }}</td>
+            <td colspan="6" class="error" style="text-align: center;">{{ "PLUGIN_ADMIN.BACKUPS_NOT_GENERATED"|t }}</td>
         </tr>
     {% endfor %}
     </tbody>
