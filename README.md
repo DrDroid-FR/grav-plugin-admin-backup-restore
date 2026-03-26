@@ -2,8 +2,8 @@
 
 ![Grav Version](https://img.shields.io/badge/Grav-1.7+-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
-![Author](https://img.shields.io/badge/author-Dr%20Droid-blue.svg)
-![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)
+![Author](https://img.shields.io/badge/author-Julien%20Perret-blue.svg)
+![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)
 
 A Grav CMS plugin that adds **restore functionality** to the admin backup page. 
 Easily restore your site from any backup with automatic pre-restore backup creation.
@@ -11,12 +11,17 @@ Easily restore your site from any backup with automatic pre-restore backup creat
 ## Features
 
 - ↺ **Restore Button** - Add restore buttons to each backup in the admin backup page
-- 🔒 **Automatic Pre-Restore Backup** - Creates a backup before restoring (excludes cache, images, logs, tmp, backup folders by default but you can add more in the configuration)
-- ⚡ **Smart Detection** - Skips pre-restore backup when restoring a pre-restore backup
 - 🎨 **Visual Distinction** - Grey buttons for pre-restore backups, blue for regular backups
-- 🌐 **Bilingual** - Full support for English and French
+- 🔄 **Confirmation Modal** - Double-check before restoring (configurable message)
+- 🔒 **Automatic Pre-Restore Backup** - Creates a backup before restoring.
+- ⚡ **Smart Detection** - Skips pre-restore backup when restoring a pre-restore backup
+- 📁 **Folder Exclusion** - Exclude specific folders from pre-restore backup (configurable)
+- 🔒 **Permission Control** - Configure who can restore backups (Super Admin by default)
 - ✨ **Beautiful UI** - Modal overlay with blur effect during restore process
-- 📊 **Progress Updates** - Real-time progress messages during restore (Starting → Creating backup → Restoring → Complete) and success message
+- 📊 **Real-Time Progress Streaming** - Live step-by-step progress via Server-Sent Events with percentage display and animated progress bar
+- 🕐 **Time Column** - Backup time displayed directly below the date in the backups table
+- 🌐 **Bilingual** - Full support for English and French
+
 
 ## Installation
 
@@ -62,13 +67,9 @@ After installation, go to **Plugins** → **Admin Backup Restore** to configure:
 
 ### Restore Progress
 
-During the restore process, you'll see progress updates in real-time:
-1. **"Restore started..."** - Initial confirmation
-2. **"Creating pre-restore backup..."** - Automatic backup before restore (skipped for pre-restore backups)
-3. **"Restoring from backup..."** - The actual restore process
-4. **"Restore complete!"** - Success message
+The restore process uses **Server-Sent Events (SSE)** to stream real-time updates to the browser. You'll see a live progress bar with percentage and step-by-step messages.
 
-The final success message displays additional details (pre-restore backup created, etc.)
+The progress bar pulses during the two longest operations (creating backup and extracting) to indicate activity. The final success message displays additional details (pre-restore backup filename, .git status, etc.)
 
 ## Excluded Folders
 

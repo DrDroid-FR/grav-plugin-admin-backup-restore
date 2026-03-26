@@ -26,3 +26,5 @@ PLUGIN_ADMIN_BACKUP_RESTORE:
   RESTORING_BACKUP: "Restauration en cours..."
   RESTORE_FINISH: "Restauration terminée ! Rafraîchissement..."
   RESTORE_FAILED: "Échec de la restauration"
+  RESTORE_CREATING_PREBACKUP: "Création d'une sauvegarde pré-restauration..."
+  RESTORE_RESTORING: "Restauration en cours..."

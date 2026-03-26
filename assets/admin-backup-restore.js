@@ -5,8 +5,6 @@
 
 (function() {
     'use strict';
-    
-    console.log('[AdminBackupRestore] Plugin JavaScript loaded');
 
     // Wait for DOM to be ready
     document.addEventListener('DOMContentLoaded', function() {
@@ -16,104 +14,27 @@
         // Try to inject buttons immediately
         injectRestoreButtons();
         
-        // Also try after a delay for AJAX-loaded content
-        setTimeout(injectTimeColumn, 1000);
-        setTimeout(injectTimeColumn, 2000);
-        setTimeout(injectRestoreButtons, 1000);
-        setTimeout(injectRestoreButtons, 2000);
-        
         // Set up a mutation observer to watch for table changes
         observeTableChanges();
     });
 
     function injectTimeColumn() {
-        const table = document.querySelector('.backups-history');
-        if (!table) return;
-        
-        const thead = table.querySelector('thead tr');
-        if (!thead) return;
-        
-        const headerCount = thead.querySelectorAll('th').length;
-        
-        if (headerCount === 5) {
-            // Template doesn't have time column, add it via JS
-            if (table.dataset.timeColumnInjected) return;
-            
-            // Add Time header after Date header
-            const dateHeader = thead.querySelector('th:nth-child(2)');
-            if (dateHeader && !thead.querySelector('.time-header')) {
-                const timeHeader = document.createElement('th');
-                timeHeader.className = 'time-header';
-                timeHeader.textContent = 'Time';
-                dateHeader.parentNode.insertBefore(timeHeader, dateHeader.nextSibling);
-            }
-            
-            // Add time cells to each row
-            const tbody = table.querySelector('tbody');
-            if (!tbody) return;
-            
-            const rows = tbody.querySelectorAll('tr');
-            rows.forEach(function(row) {
-                if (row.querySelector('.error')) return;
-                
-                const dateCell = row.querySelector('td:nth-child(2)');
-                if (dateCell && !row.querySelector('.time-cell')) {
-                    const timeCell = document.createElement('td');
-                    timeCell.className = 'time-cell';
-                    const dateText = dateCell.textContent;
-                    // Extract time from format like "Mar 25, 2026 6:30 PM" or "Mar 25, 2026 18:30"
-                    const match = dateText.match(/(\d{1,2}:\d{2})/);
-                    timeCell.textContent = match ? match[1] : '';
-                    dateCell.parentNode.insertBefore(timeCell, dateCell.nextSibling);
-                }
-            });
-            
-            table.dataset.timeColumnInjected = 'true';
-        } else if (headerCount >= 6) {
-            // Template has time column but might be empty, try to populate from date column
-            if (table.dataset.timeColumnPopulated) return;
-            
-            const tbody = table.querySelector('tbody');
-            if (!tbody) return;
-            
-            const rows = tbody.querySelectorAll('tr');
-            rows.forEach(function(row) {
-                if (row.querySelector('.error')) return;
-                
-                const timeCell = row.querySelector('td:nth-child(3)');
-                const dateCell = row.querySelector('td:nth-child(2)');
-                
-                if (timeCell && dateCell && !timeCell.textContent.trim()) {
-                    const dateText = dateCell.textContent;
-                    const match = dateText.match(/(\d{1,2}:\d{2})/);
-                    timeCell.textContent = match ? match[1] : '';
-                }
-            });
-            
-            table.dataset.timeColumnPopulated = 'true';
-        }
+        // Time is now rendered directly in the template (date + time in one cell)
+        // No JS injection needed
     }
     
     function injectRestoreButtons() {
         const tableBody = document.querySelector('.backups-history tbody');
-        if (!tableBody) {
-            console.log('[AdminBackupRestore] No backups history table found');
-            return;
-        }
-        
-        console.log('[AdminBackupRestore] Found backups table, checking if buttons already injected...');
+        if (!tableBody) return;
         
         // Check if buttons already injected
-        if (tableBody.dataset.restoreButtonsInjected) {
-            console.log('[AdminBackupRestore] Buttons already injected');
-            return;
-        }
+        if (tableBody.dataset.restoreButtonsInjected) return;
         
         const rows = tableBody.querySelectorAll('tr');
         if (rows.length === 0) return;
         
         // Get nonce from window
-        const nonce = window.admin_nonce || getNonceFromPage();
+        const nonce = window.admin_nonce;
         
         rows.forEach(function(row) {
             // Skip empty message row
@@ -170,7 +91,7 @@
             restoreBtn.dataset.hint = 'Restore';
             
             // Check if this is a pre_restore_backup by looking at the backup name in the row
-            const nameCell = row.querySelector('td:nth-child(4)');
+            const nameCell = row.querySelector('td:nth-child(3)');
             const backupName = nameCell ? nameCell.textContent.toLowerCase() : '';
             const isPreRestore = backupName.includes('pre restore');
             
@@ -216,73 +137,29 @@
         observer.observe(table, { childList: true, subtree: true });
     }
 
-    function getNonceFromPage() {
-        // Try to get nonce from page
-        const scripts = document.querySelectorAll('script');
-        for (let i = 0; i < scripts.length; i++) {
-            const match = scripts[i].textContent.match(/admin_nonce\s*=\s*['"]([^'"]+)['"]/);
-            if (match) return match[1];
-        }
-        
-        // Try from data attributes
-        const body = document.body;
-        if (body && body.dataset.adminNonce) {
-            return body.dataset.adminNonce;
-        }
-        
-        return '';
-    }
-
     // Handle restore button clicks using event delegation
     document.addEventListener('click', function(e) {
-        console.log('[AdminBackupRestore] Click event triggered on:', e.target);
-        
         const restoreBtn = e.target.closest('.button-restore');
-        console.log('[AdminBackupRestore] Found restore button:', restoreBtn);
         
-        if (!restoreBtn) {
-            console.log('[AdminBackupRestore] No restore button found, checking for backupDelete...');
-            // Check if it's the delete button or another control
-            return;
-        }
+        if (!restoreBtn) return;
 
         e.preventDefault();
         e.stopPropagation();
-
-        // Prevent any other handlers from running (including Grav's default backup modal)
         e.stopImmediatePropagation();
-
-        console.log('[AdminBackupRestore] Restore button clicked, URL:', restoreBtn.dataset.backupRestore);
 
         const restoreUrl = restoreBtn.dataset.backupRestore;
         
         // Get the backup title from the row to determine backup type
         const row = restoreBtn.closest('tr');
-        const titleCell = row ? row.querySelector('td:nth-child(4)') : null;
+        const titleCell = row ? row.querySelector('td:nth-child(3)') : null;
         const backupTitle = titleCell ? titleCell.textContent.trim() : 'this backup';
         
-        // Show our custom orange modal for all restore operations
+        // Show our custom modal for all restore operations
         showRestoreConfirm(restoreUrl, backupTitle);
     });
 
-    // Prevent Grav's built-in backup modals from appearing
-    // This intercepts any backup-related click events at document level
-    document.addEventListener('click', function(e) {
-        // Check if this might be a Grav backup modal trigger
-        const target = e.target;
-        
-        // Look for any element that might be related to backup actions
-        // that isn't our restore button
-        if (target.closest('[data-remodal][data-backup]') || 
-            target.closest('.remodal[data-backup]') ||
-            (target.tagName === 'A' && target.href && target.href.includes('backup') && !target.classList.contains('button-restore'))) {
-            console.log('[AdminBackupRestore] Detected potential Grav backup modal trigger, allowing custom handler');
-        }
-    });
-    
     function showRestoreConfirm(restoreUrl, backupTitle) {
         const translations = getTranslations();
-        console.log('[AdminBackupRestore] showRestoreConfirm called with:', { restoreUrl, backupTitle, translations });
         
         // Determine if this is a pre_restore backup
         const isPreRestore = backupTitle.toLowerCase().includes('pre restore');
@@ -306,8 +183,6 @@
     }
 
     function showConfirmModal(translations, restoreUrl, backupTitle, isPreRestore) {
-        console.log('[AdminBackupRestore] showConfirmModal called, isPreRestore:', isPreRestore);
-        
         // Create a flag to track if restore is in progress
         let isRestoreInProgress = false;
         
@@ -366,10 +241,7 @@
                 'display: flex;' +
                 'align-items: center;' +
                 'justify-content: center;">' +
-                // Different icon for pre_restore vs normal backup
-                (isPreRestore 
-                    ? '<svg style="width: 32px; height: 32px; fill: white;" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>'  // File icon for pre_restore
-                    : '<svg style="width: 32px; height: 32px; fill: white;" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>') +  // File icon for normal
+                '<svg style="width: 32px; height: 32px; fill: white;" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>' +
             '</div>' +
             '<h2 style="margin: 0; color: white; font-size: 22px; font-weight: 600;">' + (isPreRestore ? translations.RESTORE_PRE_RESTORE_TITLE || 'Restore Pre-Restore Backup' : translations.RESTORE_BACKUP_TITLE || 'Restore Backup') + '</h2>' +
         '</div>';
@@ -498,134 +370,113 @@
         if (!contentDiv) return;
         
         const firstMsg = isPreRestore 
-            ? (translations.RESTORE_RESTORING || 'Restoring from backup... Please wait !')
+            ? (translations.RESTORE_RESTORING || 'Restoring from backup...')
             : (translations.RESTORE_CREATING_PREBACKUP || 'Creating pre-restore backup...');
         
-        // Update content to show progress bar and message
+        // Update content to show progress bar, step message and percent
         contentDiv.innerHTML =
             '<div style="padding: 28px 32px; text-align: center;">' +
-            '<p style="margin: 0 0 16px; color: #374151; font-size: 16px; line-height: 1.6;">' + firstMsg + '</p>' +
-            '<div style="width: 100%; background: #e5e7eb; border-radius: 8px; height: 8px; overflow: hidden;">' +
-            '<div id="progress-bar" style="width: 0%; background: #3498db; height: 100%; transition: width 0.3s ease; border-radius: 8px;"></div>' +
+            '<p id="restore-step-message" style="margin: 0 0 16px; color: #374151; font-size: 16px; line-height: 1.6;">' + firstMsg + '</p>' +
+            '<div style="width: 100%; background: #e5e7eb; border-radius: 8px; height: 8px; overflow: hidden; margin-bottom: 8px;">' +
+            '<div id="progress-bar" style="width: 0%; background: #3498db; height: 100%; transition: width 0.5s ease; border-radius: 8px;"></div>' +
             '</div>' +
+            '<p id="restore-percent" style="margin: 0; color: #9ca3af; font-size: 13px; font-weight: 600;">0%</p>' +
             '</div>';
         
-        // Hide the buttons by finding them and setting display none
+        // Hide the buttons
         const cancelBtn = modal.querySelector('#cancel-restore-btn');
         const confirmBtn = modal.querySelector('#confirm-restore-btn');
-        if (cancelBtn && cancelBtn.parentNode) {
-            cancelBtn.parentNode.style.display = 'none';
-        }
-        if (confirmBtn && confirmBtn.parentNode) {
-            confirmBtn.parentNode.style.display = 'none';
-        }
-        
-        // Animate progress bar
-        setTimeout(function() {
-            const bar = modal.querySelector('#progress-bar');
-            if (bar) bar.style.width = '30%';
-        }, 100);
-        
-        setTimeout(function() {
-            const bar = modal.querySelector('#progress-bar');
-            if (bar) bar.style.width = '60%';
-        }, 1000);
-        
-        setTimeout(function() {
-            const bar = modal.querySelector('#progress-bar');
-            if (bar) {
-                bar.style.width = '90%';
-                bar.style.animation = 'progressPulse 0.8s ease-in-out infinite';
-            }
-        }, 2000);
+        if (cancelBtn && cancelBtn.parentNode) cancelBtn.parentNode.style.display = 'none';
+        if (confirmBtn && confirmBtn.parentNode) confirmBtn.parentNode.style.display = 'none';
     }
 
-    // Perform restore with updates to the same modal
+    // Perform restore with real-time SSE streaming
     function performRestoreWithModalUpdates(url, isPreRestore, confirmModal) {
         const translations = getTranslations();
         const modal = confirmModal;
-        
-        // If not pre-restore, update to show "Restoring" after 1.5s
-        if (!isPreRestore) {
-            setTimeout(function() {
-                const bar = modal.querySelector('#progress-bar');
-                if (bar) bar.style.width = '60%';
-                // Also update the text message
-                const contentDiv = modal.querySelector('div:nth-child(2)');
-                if (contentDiv) {
-                    const msgEl = contentDiv.querySelector('p');
-                    if (msgEl) msgEl.textContent = translations.RESTORE_RESTORING || 'Restoring from backup... Please wait !';
-                }
-            }, 1500);
-        }
-        
-        // Make the AJAX request
+        const stepEl = modal.querySelector('#restore-step-message');
+        const barEl = modal.querySelector('#progress-bar');
+        const percentEl = modal.querySelector('#restore-percent');
+
         fetch(url, {
             method: 'GET',
             credentials: 'same-origin'
-        })
-        .then(function(response) {
-            return response.text().then(function(text) {
-                try {
-                    return JSON.parse(text);
-                } catch (e) {
-                    return { status: 'error', message: 'Server returned: ' + text.substring(0, 200) };
-                }
-            });
-        })
-        .then(function(data) {
-            // Show full progress
-            const bar = modal.querySelector('#progress-bar');
-            if (bar) {
-                bar.style.width = '100%';
-                bar.style.animation = 'none';
-            }
+        }).then(function(response) {
+            if (!response.ok) throw new Error('HTTP ' + response.status);
             
-            // Short delay before closing modal
-            setTimeout(function() {
-                // Remove the confirmation modal
-                closeModal(modal);
-                
-                if (data.status === 'success') {
-                    // Parse the message to extract pre-restore backup info
-                    let message = data.message || translations.RESTORE_FINISH || 'Restore complete! Refreshing...';
-                    console.log('[AdminBackupRestore] Response:', data);
-                    
-                    // Check if there's details field with pre-restore backup info
-                    let preRestoreInfo = '';
-                    if (data.details) {
-                        let details = data.details.trim();
-                        console.log('[AdminBackupRestore] Details:', details);
-                        if (details && details.includes('.zip')) {
-                            // Extract the zip filename from details
-                            let match = details.match(/([^\s]+\.zip)/);
-                            if (match && match[1]) {
-                                preRestoreInfo = '<br><span style="font-size: 14px; color: #6b7280; margin-top: 8px; display: block;">' + details + '</span>';
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+
+            function read() {
+                reader.read().then(function(result) {
+                    if (result.done) return;
+
+                    buffer += decoder.decode(result.value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop(); // Keep incomplete line
+
+                    for (var i = 0; i < lines.length; i++) {
+                        var line = lines[i].trim();
+                        if (!line.startsWith('data: ')) continue;
+
+                        try {
+                            var data = JSON.parse(line.substring(6));
+
+                            if (data.step) {
+                                if (stepEl) stepEl.textContent = data.message;
+                                if (barEl) {
+                                    barEl.style.width = (data.percent || 0) + '%';
+                                    // Pulse animation during long operations
+                                    if (data.step === 'pre_backup' || data.step === 'extract') {
+                                        barEl.style.animation = 'progressPulse 1.2s ease-in-out infinite';
+                                    } else {
+                                        barEl.style.animation = 'none';
+                                    }
+                                }
+                                if (percentEl) percentEl.textContent = (data.percent || 0) + '%';
                             }
+
+                            if (data.status === 'success') {
+                                setTimeout(function() {
+                                    closeModal(modal);
+                                    var message = data.message || 'Restore complete!';
+                                    var details = data.details ? data.details.trim() : '';
+                                    if (details) {
+                                        message += '<br><span style="font-size:14px;color:#6b7280;margin-top:8px;display:block;">' + details + '</span>';
+                                    }
+                                    updatePersistentModal(message, 'success');
+                                    window.location.reload();
+                                }, 400);
+                                return;
+                            }
+
+                            if (data.status === 'error') {
+                                setTimeout(function() {
+                                    closeModal(modal);
+                                    updatePersistentModal(data.message || translations.RESTORE_ERROR, 'error');
+                                }, 400);
+                                return;
+                            }
+                        } catch (e) {
+                            // Skip malformed SSE lines
                         }
                     }
-                    
-                    console.log('[AdminBackupRestore] preRestoreInfo:', preRestoreInfo);
-                    if (preRestoreInfo) {
-                        showNotification(message + preRestoreInfo, 'success');
-                    } else {
-                        showNotification(message, 'success');
-                    }
-                    window.location.reload();
-                } else {
-                    showNotification(data.message || translations.RESTORE_ERROR, 'error');
-                }
-            }, 500);
-        })
-        .catch(function(error) {
-            showNotification(translations.RESTORE_ERROR + ': ' + error.message, 'error');
+
+                    read();
+                }).catch(function(err) {
+                    closeModal(modal);
+                    updatePersistentModal(translations.RESTORE_ERROR + ': ' + err.message, 'error');
+                });
+            }
+
+            read();
+        }).catch(function(error) {
+            closeModal(modal);
+            updatePersistentModal(translations.RESTORE_ERROR + ': ' + error.message, 'error');
         });
     }
 
-    function showNotification(message, type) {
-        updatePersistentModal(message, type);
-    }
-    
     function updatePersistentModal(message, type) {
         
         const colors = {
@@ -726,26 +577,7 @@
     }
 
     function getTranslations() {
-        // Try to get translations from Grav
-        if (typeof Admin !== 'undefined' && Admin.translations) {
-            return {
-                WARNING: Admin.translations.PLUGIN_ADMIN_BACKUP_RESTORE?.WARNING || 'Warning',
-                RESTORE_BACKUP_TITLE: Admin.translations.PLUGIN_ADMIN_BACKUP_RESTORE?.RESTORE_BACKUP_TITLE || 'Restore Backup',
-                RESTORE_CONFIRM_MESSAGE: Admin.translations.PLUGIN_ADMIN_BACKUP_RESTORE?.RESTORE_CONFIRM_MESSAGE || 'Are you sure you want to restore this backup?',
-                RESTORE_PRE_RESTORE_MESSAGE: Admin.translations.PLUGIN_ADMIN_BACKUP_RESTORE?.RESTORE_PRE_RESTORE_MESSAGE || 'You are about to restore a pre-restore backup. This will overwrite your current site with the backup content.',
-                RESTORE_PRE_RESTORE_TITLE: Admin.translations.PLUGIN_ADMIN_BACKUP_RESTORE?.RESTORE_PRE_RESTORE_TITLE || 'Restore Pre-Restore Backup',
-                BUTTON_RESTORE: Admin.translations.PLUGIN_ADMIN_BACKUP_RESTORE?.BUTTON_RESTORE || 'Restore',
-                BUTTON_CANCEL: Admin.translations.PLUGIN_ADMIN_BACKUP_RESTORE?.BUTTON_CANCEL || 'Cancel',
-                RESTORE_ERROR: Admin.translations.PLUGIN_ADMIN_BACKUP_RESTORE?.RESTORE_ERROR || 'Restore failed',
-                RESTORE_STARTED: Admin.translations.PLUGIN_ADMIN_BACKUP_RESTORE?.RESTORE_STARTED || 'Restore started...',
-                RESTORE_CREATING_PREBACKUP: Admin.translations.PLUGIN_ADMIN_BACKUP_RESTORE?.RESTORE_CREATING_PREBACKUP || 'Creating pre-restore backup...',
-                RESTORE_RESTORING: Admin.translations.PLUGIN_ADMIN_BACKUP_RESTORE?.RESTORE_RESTORING || 'Restoring from backup... Please Wait !',
-                RESTORE_FINISH: Admin.translations.PLUGIN_ADMIN_BACKUP_RESTORE?.RESTORE_FINISH || 'Restore complete ! Refreshing...'
-            };
-        }
-        
-        // Default English translations
-        return {
+        const defaults = {
             WARNING: 'Warning',
             RESTORE_BACKUP_TITLE: 'Restore Backup',
             RESTORE_CONFIRM_MESSAGE: 'Are you sure you want to restore this backup? A backup of the current site will be created automatically before restoring.',
@@ -759,5 +591,16 @@
             RESTORE_RESTORING: 'Restoring from backup... Please wait !',
             RESTORE_FINISH: 'Restore complete ! Refreshing...'
         };
+        
+        if (typeof Admin !== 'undefined' && Admin.translations && Admin.translations.PLUGIN_ADMIN_BACKUP_RESTORE) {
+            const grav = Admin.translations.PLUGIN_ADMIN_BACKUP_RESTORE;
+            const result = {};
+            for (const key in defaults) {
+                result[key] = grav[key] || defaults[key];
+            }
+            return result;
+        }
+        
+        return defaults;
     }
 })();

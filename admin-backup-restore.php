@@ -6,7 +6,7 @@
  * Adds restore functionality to the Grav Admin backup page
  * 
  * @package Grav\Plugin\AdminBackupRestorePlugin
- * @version 1.1.0
+ * @version 1.2.0
  * @author  Julien Perret <gravdev@drdroid.fr>
  * @license MIT
  * @github   https://github.com/DrDroid-FR
@@ -40,6 +40,7 @@ class AdminBackupRestorePlugin extends Plugin
             'onPluginsInitialized' => ['onPluginsInitialized', 0],
             'onTwigSiteVariables' => ['onTwigSiteVariables', 0],
             'onAdminControllerInit' => ['onAdminControllerInit', 0],
+            'onTwigTemplatePaths' => ['onTwigTemplatePaths', 0],
         ];
     }
 
@@ -53,11 +54,6 @@ class AdminBackupRestorePlugin extends Plugin
             return;
         }
 
-        // Add our template path for override
-        $twig_paths = $this->grav['twig']->twig_paths;
-        array_unshift($twig_paths, __DIR__ . '/templates');
-        $this->grav['twig']->twig_paths = $twig_paths;
-
         // Add assets
         $this->grav['assets']->addJs('plugin://admin-backup-restore/assets/admin-backup-restore.js');
         
@@ -66,12 +62,18 @@ class AdminBackupRestorePlugin extends Plugin
     }
 
     /**
+     * Add plugin template paths for Twig overrides
+     */
+    public function onTwigTemplatePaths()
+    {
+        array_unshift($this->grav['twig']->twig_paths, __DIR__ . '/templates');
+    }
+
+    /**
      * Handle admin controller initialization
      */
     public function onAdminControllerInit(Event $event)
     {
-        $controller = $event['controller'] ?? null;
-        
         // Get the task from URI
         $task = $this->grav['uri']->param('task');
         
@@ -104,12 +106,13 @@ JS;
     }
 
     /**
-     * Handle backup restore
+     * Handle backup restore with SSE progress streaming
      */
     protected function handleRestore()
     {
         $grav = Grav::instance();
         $uri = $grav['uri'];
+        $debug = $this->config->get('plugins.admin-backup-restore.debug', false);
         
         // Verify nonce
         $nonce = $uri->param('admin-nonce');
@@ -121,9 +124,10 @@ JS;
             return;
         }
 
-        // Verify permissions
+        // Verify permissions using configured permission level
+        $required_permission = $this->config->get('plugins.admin-backup-restore.permissions', 'admin.super');
         $admin = $grav['admin'];
-        if (!$admin->authorize(['admin.maintenance', 'admin.super'])) {
+        if (!$admin->authorize($required_permission)) {
             $this->jsonResponse([
                 'status' => 'error',
                 'message' => 'Unauthorized'
@@ -141,27 +145,34 @@ JS;
             return;
         }
 
+        // Set SSE headers
+        header('Content-Type: text/event-stream');
+        header('Cache-Control: no-cache');
+        header('Connection: keep-alive');
+        header('X-Accel-Buffering: no');
+        if (function_exists('apache_setenv')) {
+            @apache_setenv('no-gzip', '1');
+        }
+        @ini_set('zlib.output_compression', 'Off');
+        @ini_set('output_buffering', 'Off');
+
         try {
             $filename = Utils::basename(base64_decode(urldecode($backup_param)));
             $locator = $grav['locator'];
             $backup_file = $locator->findResource("backup://{$filename}", true);
 
             if (!$backup_file || !file_exists($backup_file)) {
-                $this->jsonResponse([
-                    'status' => 'error',
-                    'message' => 'Backup file not found'
-                ]);
+                $this->sseSend(['status' => 'error', 'message' => 'Backup file not found']);
                 return;
             }
 
             // Verify it's a valid zip file
             if (!Utils::endsWith($filename, '.zip', false)) {
-                $this->jsonResponse([
-                    'status' => 'error',
-                    'message' => 'Invalid backup file format'
-                ]);
+                $this->sseSend(['status' => 'error', 'message' => 'Invalid backup file format']);
                 return;
             }
+
+            $this->sseSend(['status' => 'progress', 'message' => 'Validating backup file...', 'step' => 'validate', 'percent' => 5]);
 
             // Get paths
             $root_path = GRAV_ROOT;
@@ -170,9 +181,10 @@ JS;
             $git_path = $root_path . DS . '.git';
             $git_removed = false;
             if (is_dir($git_path)) {
-                if ($this->config->get('plugins.admin-backup-restore.debug', false)) {
+                if ($debug) {
                     $grav['log']->debug('[AdminBackupRestore] Removing .git folder before restore');
                 }
+                $this->sseSend(['status' => 'progress', 'message' => 'Preparing site (handling .git)...', 'step' => 'prepare', 'percent' => 10]);
                 Folder::delete($git_path);
                 $git_removed = true;
             }
@@ -180,23 +192,22 @@ JS;
             // Step 1: Create automatic backup before restore (unless restoring a pre_restore_backup)
             $backup_dir = $locator->findResource('backup://', true, true);
             
-            // Check if we're restoring a pre_restore_backup - if so, skip creating another pre-restore backup
+            // Check if we're restoring a pre_restore_backup
             $is_pre_restore = (strpos($filename, 'pre_restore_backup') !== false);
+            $create_pre_restore = $this->config->get('plugins.admin-backup-restore.pre_restore_backup', true);
             
             $status_message = '';
-            $progress = 'started';
             
-            if (!$is_pre_restore) {
-                $progress = 'creating_backup';
+            if ($create_pre_restore && !$is_pre_restore) {
+                $this->sseSend(['status' => 'progress', 'message' => 'Creating pre-restore backup...', 'step' => 'pre_backup', 'percent' => 20]);
+                
                 $date = date('YmdHis', time());
                 $pre_restore_filename = 'pre_restore_backup--' . $date . '.zip';
                 $pre_restore_destination = $backup_dir . DS . $pre_restore_filename;
                 
-                // Folders to exclude from pre-restore backup (from plugin config)
-                $config = $this->config->get('plugins.admin-backup-restore.exclude_folders', 'backup, cache, images, logs, tmp');
-                $exclude_folders = array_map('trim', explode(',', $config));
+                $config_value = $this->config->get('plugins.admin-backup-restore.exclude_folders', 'backup, cache, images, logs, tmp');
+                $exclude_folders = array_map('trim', explode(',', $config_value));
                 
-                // Use GRAV's native Archiver to create the backup
                 $options = [
                     'exclude_files' => [],
                     'exclude_paths' => $exclude_folders,
@@ -205,56 +216,60 @@ JS;
                 $archiver = Archiver::create('zip');
                 $archiver->setArchive($pre_restore_destination)->setOptions($options)->compress($root_path);
                 
+                $this->sseSend(['status' => 'progress', 'message' => 'Pre-restore backup created: ' . $pre_restore_filename, 'step' => 'pre_backup_done', 'percent' => 50]);
+                
                 $grav['log']->notice('Pre-restore backup created: ' . $pre_restore_destination);
                 $status_message = ' Pre-restore backup created: ' . $pre_restore_filename;
+            } elseif (!$create_pre_restore) {
+                $this->sseSend(['status' => 'progress', 'message' => 'Pre-restore backup skipped (disabled)', 'step' => 'pre_backup_skipped', 'percent' => 15]);
+                $status_message = ' (Pre-restore backup disabled in plugin config)';
             } else {
+                $this->sseSend(['status' => 'progress', 'message' => 'Restoring pre-restore backup (skipping new backup)...', 'step' => 'pre_backup_skipped', 'percent' => 15]);
                 $status_message = ' (Restoring a pre-restore backup - no new pre-restore backup created)';
             }
 
-            // Step 2: Extract the selected backup
-            $progress = 'restoring';
-            
-            // Extract to temp folder first, then copy excluding .git to avoid permission issues
-            $temp_extract = $root_path . DS . 'temp_restore_' . time();
+            // Step 2: Extract the selected backup directly to root
+            $this->sseSend(['status' => 'progress', 'message' => 'Extracting backup archive...', 'step' => 'extract', 'percent' => 60]);
             
             $archiver = Archiver::create('zip');
-            $archiver->setArchive($backup_file)->extract($temp_extract);
+            $archiver->setArchive($backup_file)->extract($root_path);
             
-            // Copy files from temp to root, excluding .git folder (case-insensitive)
-            $this->copyExcludeGit($temp_extract, $root_path);
+            $this->sseSend(['status' => 'progress', 'message' => 'Cleaning up extracted files...', 'step' => 'cleanup', 'percent' => 80]);
             
-            // Clean up temp directory
-            Folder::delete($temp_extract);
+            // Remove .git folder if it was extracted (can cause permission issues)
+            if (is_dir($git_path)) {
+                Folder::delete($git_path);
+                $git_removed = true;
+            }
             
-            // Log the restore
             $grav['log']->notice('Backup restored from: ' . $backup_file);
             
             // Clear cache after restore
+            $this->sseSend(['status' => 'progress', 'message' => 'Clearing cache...', 'step' => 'cache', 'percent' => 90]);
             Cache::clearCache('all');
             
-            // Add message if .git was removed
+            // Build status message
             if ($git_removed) {
                 $status_message .= ' (.git folder was reset for compatibility)';
             }
             
-            $progress = 'complete';
-            
-            $this->jsonResponse([
-                'status' => 'success',
-                'message' => 'Restore complete!',
-                'details' => trim($status_message),
-                'progress' => $progress
-            ]);
+            // Final success event
+            $this->sseSend(['status' => 'success', 'message' => 'Restore complete!', 'details' => trim($status_message), 'step' => 'done', 'percent' => 100]);
             
         } catch (\Exception $e) {
-            // Log the error for debugging
             $grav['log']->error('[AdminBackupRestore] Backup restore failed: ' . $e->getMessage());
-            
-            $this->jsonResponse([
-                'status' => 'error',
-                'message' => 'Restore failed: ' . $e->getMessage()
-            ]);
+            $this->sseSend(['status' => 'error', 'message' => 'Restore failed: ' . $e->getMessage()]);
         }
+    }
+
+    /**
+     * Send SSE data event and flush
+     */
+    protected function sseSend(array $data)
+    {
+        echo 'data: ' . json_encode($data) . "\n\n";
+        if (ob_get_level() > 0) ob_end_flush();
+        @flush();
     }
 
     /**
@@ -272,7 +287,11 @@ JS;
      */
     protected function copyExcludeGit($src, $dst)
     {
-        $dir = opendir($src);
+        $dir = @opendir($src);
+        if ($dir === false) {
+            return;
+        }
+        
         if (!is_dir($dst)) {
             mkdir($dst, 0755, true);
         }

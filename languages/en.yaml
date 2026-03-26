@@ -26,3 +26,5 @@ PLUGIN_ADMIN_BACKUP_RESTORE:
   RESTORING_BACKUP: "Restoring backup..."
   RESTORE_FINISH: "Restore complete ! Refreshing..."
   RESTORE_FAILED: "Restore failed"
+  RESTORE_CREATING_PREBACKUP: "Creating pre-restore backup..."
+  RESTORE_RESTORING: "Restoring from backup..."

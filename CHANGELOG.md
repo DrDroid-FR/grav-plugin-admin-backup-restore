@@ -2,6 +2,32 @@
 
 All notable changes to this plugin will be documented in this file.
 
+## [1.2.0] - 2026-03-25
+
+### Added
+- Server-Sent Events (SSE) for real-time progress streaming from server to browser
+- Live percentage display with animated progress bar
+- Pulse animation on progress bar during long operations (pre-backup creation, archive extraction)
+- Time column displayed below date in backups table (backups_history template override)
+
+### Fixed
+- Permission check now correctly uses configured permission level (was passing array instead of string)
+- `pre_restore_backup`, `permissions`, and `restore_confirm_message` config values are now properly wired to the PHP logic
+- Template override path registration now uses `onTwigTemplatePaths` hook and `array_unshift` for correct precedence over admin plugin template
+
+### Changed
+- Archive extraction now happens directly to root instead of temp folder + recursive copy (major performance improvement)
+- Progress updates are now streamed in real-time rather than returned at the end
+- Temp directory generation uses `uniqid()` to prevent race conditions
+
+### Removed
+- Dead code file `backup-restore.php` (181 lines of duplicate logic)
+- Unused `Grav\Common\Plugin` import in PHP
+
+### Improved
+- `opendir()` now has error handling (suppresses warnings, returns early on failure)
+- `getTranslations()` simplified with defaults object and loop merge
+
 ## [1.1.0] - 2026-03-24
 
 ### Added
