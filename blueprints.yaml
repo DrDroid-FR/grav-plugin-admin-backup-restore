@@ -5,12 +5,12 @@ version: 1.2.0
 description: Adds restore functionality to the Grav Admin backup page with automatic backup before restore
 icon: refresh
 author:
-  name: Julien Perret
+  name: Dr Droid (Julien Perret)
   email: gravdev@drdroid.fr
   url: https://github.com/DrDroid-FR
-homepage: https://github.com/DrDroid-FR/admin-backup-restore
+homepage: https://github.com/DrDroid-FR/grav-plugin-admin-backup-restore
 keywords: grav, plugin, backup, restore, admin
-bugs: https://github.com/DrDroid-FR/admin-backup-restore/issues
+bugs: https://github.com/DrDroid-FR/grav-plugin-admin-backup-restore/issues
 license: MIT
 
 dependencies:
