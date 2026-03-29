@@ -94,6 +94,11 @@ This will exclude:
 For general information on Grav backups, see the official documentation:
 [https://learn.getgrav.org/18/advanced/backups](https://learn.getgrav.org/18/advanced/backups)
 
+## Acknowledgements
+
+This plugin would not exist without the amazing work of the Grav core team and the wider Grav community.  
+Huge thanks to everyone involved in creating and maintaining Grav CMS, its Admin plugin, and the ecosystem of plugins, themes, and documentation that made this project possible.
+
 ## Support
 
 - **Issues:** https://github.com/DrDroid-FR/grav-plugin-admin-backup-restore/issues
