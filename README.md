@@ -37,7 +37,7 @@ Easily restore your site from any backup with automatic pre-restore backup creat
 Use the gpm direct-install command: 
 
 ```bash
-bin/gpm direct-install https://github.com/DrDroid-FR/grav-plugin-admin-backup-restore/releases/latest/download/backup-restore-main.zip
+bin/gpm direct-install https://github.com/DrDroid-FR/grav-plugin-admin-backup-restore/releases/latest/download/admin-backup-restore-1.2.0.zip
 ```
 
 ## Configuration
