@@ -5,12 +5,12 @@
 ![Author](https://img.shields.io/badge/author-Dr%20Droid-blue.svg)
 ![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)
 
-A Grav CMS plugin that adds **restore functionality** to the admin backup page. 
-Easily restore your site from any backup with automatic pre-restore backup creation.
+A Grav CMS plugin that adds **restore functionality** to the admin backup page.  
+Easily restore your site from any backup with automatic pre-restore backup creation for safety.
 
 ## Features
 
-- ↺ **Restore Button** - Add restore buttons to each backup in the admin backup page
+- ↺ **Restore Button** - Adds a Restore button next to each backup in the Admin backups list
 - 🎨 **Visual Distinction** - Grey buttons for pre-restore backups, blue for regular backups
 - 🔄 **Confirmation Modal** - Double-check before restoring (configurable message)
 - 🔒 **Automatic Pre-Restore Backup** - Creates a backup before restoring.
@@ -30,7 +30,7 @@ Easily restore your site from any backup with automatic pre-restore backup creat
 1. Download the [latest release](https://github.com/DrDroid-FR/grav-plugin-admin-backup-restore/releases/latest/)
 2. Extract the archive to `user/plugins/`
 3. Rename the folder to `admin-backup-restore`
-4. Clear the Grav cache
+4. Clear the Grav cache : ```bash bin/grav clear-cache to clear the Grav cache```
 
 ### Via GPM
 
@@ -73,7 +73,7 @@ The progress bar pulses during the two longest operations (creating backup and e
 
 ## Excluded Folders
 
-The automatic pre-restore backup excludes standard folders by default but you can customize these exclusions in the plugin configuration page and even use subfolder exclusions
+The automatic pre-restore backup excludes standard folders by default but you can customize these exclusions in the plugin configuration page and also exclude specific subfolders.
 
 For example:
 
@@ -90,6 +90,9 @@ This will exclude:
 - Grav CMS 1.7+
 - Admin Plugin 1.10+
 - PHP 7.4+
+
+For general information on Grav backups, see the official documentation:
+[https://learn.getgrav.org/18/advanced/backups](https://learn.getgrav.org/18/advanced/backups)
 
 ## Support
 
