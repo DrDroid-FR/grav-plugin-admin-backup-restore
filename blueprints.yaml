@@ -1,7 +1,7 @@
 name: Admin Backup Restore
 slug: admin-backup-restore
 type: plugin
-version: 1.2.0
+version: 1.3.0
 description: Adds restore functionality to the Grav Admin backup page with automatic backup before restore
 icon: refresh
 author:
@@ -42,6 +42,17 @@ form:
       validate:
         type: bool
       help: Creates a backup of the current site state before restoring
+
+    default_restore_mode:
+      type: select
+      label: Default Restore Mode
+      default: merge
+      options:
+        merge: "Add & Overwrite (merge)"
+        clean: "Clean Restore (remove existing files first)"
+      validate:
+        type: string
+      help: Default mode shown in the restore dialog. Users can still change it per restore.
 
     restore_confirm_message:
       type: text

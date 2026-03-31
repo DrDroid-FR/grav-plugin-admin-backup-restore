@@ -6,7 +6,7 @@
  * Adds restore functionality to the Grav Admin backup page
  * 
  * @package Grav\Plugin\AdminBackupRestorePlugin
- * @version 1.2.0
+ * @version 1.3.0
  * @author  Julien Perret <gravdev@drdroid.fr>
  * @license MIT
  * @github   https://github.com/DrDroid-FR
@@ -76,15 +76,12 @@ class AdminBackupRestorePlugin extends Plugin
     {
         // Get the task from URI
         $task = $this->grav['uri']->param('task');
-        
-        // Only handle our specific task
-        if ($task !== 'backupRestore') {
-            return;
+
+        if ($task === 'backupRestore') {
+            $this->handleRestore();
+        } elseif ($task === 'analyzeRestore') {
+            $this->handleAnalyzeRestore();
         }
-        
-        // Prevent the default controller from handling this
-        // and handle it ourselves
-        $this->handleRestore();
     }
 
     /**
@@ -98,8 +95,10 @@ class AdminBackupRestorePlugin extends Plugin
         
         // Add inline JavaScript to set global variables
         $nonce = Utils::getNonce('admin-form');
+        $default_mode = $this->config->get('plugins.admin-backup-restore.default_restore_mode', 'merge');
         $script = <<<JS
 window.admin_nonce = '$nonce';
+window.admin_default_restore_mode = '$default_mode';
 JS;
         
         $this->grav['assets']->addInlineJs($script);
@@ -195,6 +194,13 @@ JS;
             // Check if we're restoring a pre_restore_backup
             $is_pre_restore = (strpos($filename, 'pre_restore_backup') !== false);
             $create_pre_restore = $this->config->get('plugins.admin-backup-restore.pre_restore_backup', true);
+
+            // Determine restore mode: clean or merge
+            // Pre-restore backups always use clean mode
+            $restore_mode = $uri->param('restore_mode') ?: 'merge';
+            if ($is_pre_restore) {
+                $restore_mode = 'clean';
+            }
             
             $status_message = '';
             
@@ -228,7 +234,21 @@ JS;
                 $status_message = ' (Restoring a pre-restore backup - no new pre-restore backup created)';
             }
 
-            // Step 2: Extract the selected backup directly to root
+            // Step 2: Optionally clean site root before extraction
+            if ($restore_mode === 'clean') {
+                $this->sseSend(['status' => 'progress', 'message' => 'Cleaning site files (clean restore)...', 'step' => 'clean', 'percent' => 55]);
+
+                $protected = ['backup', 'cache', 'logs', 'tmp'];
+                if ($git_removed) {
+                    $protected[] = '.git';
+                }
+                $this->cleanBeforeExtract($root_path, $protected);
+
+                $status_message .= ' (clean restore: existing files removed before extraction)';
+                $this->sseSend(['status' => 'progress', 'message' => 'Site files cleaned.', 'step' => 'clean_done', 'percent' => 58]);
+            }
+
+            // Step 3: Extract the selected backup directly to root
             $this->sseSend(['status' => 'progress', 'message' => 'Extracting backup archive...', 'step' => 'extract', 'percent' => 60]);
             
             $archiver = Archiver::create('zip');
@@ -259,6 +279,116 @@ JS;
         } catch (\Exception $e) {
             $grav['log']->error('[AdminBackupRestore] Backup restore failed: ' . $e->getMessage());
             $this->sseSend(['status' => 'error', 'message' => 'Restore failed: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Handle backup analysis - returns metadata about a backup zip file
+     */
+    protected function handleAnalyzeRestore()
+    {
+        $grav = Grav::instance();
+        $uri = $grav['uri'];
+
+        // Verify nonce
+        $nonce = $uri->param('admin-nonce');
+        if (!Utils::verifyNonce($nonce, 'admin-form')) {
+            $this->jsonResponse(['status' => 'error', 'message' => 'Invalid security token']);
+            return;
+        }
+
+        // Verify permissions
+        $required_permission = $this->config->get('plugins.admin-backup-restore.permissions', 'admin.super');
+        $admin = $grav['admin'];
+        if (!$admin->authorize($required_permission)) {
+            $this->jsonResponse(['status' => 'error', 'message' => 'Unauthorized']);
+            return;
+        }
+
+        // Get backup filename
+        $backup_param = $uri->param('backup');
+        if (null === $backup_param) {
+            $this->jsonResponse(['status' => 'error', 'message' => 'No backup specified']);
+            return;
+        }
+
+        try {
+            $filename = Utils::basename(base64_decode(urldecode($backup_param)));
+            $locator = $grav['locator'];
+            $backup_file = $locator->findResource("backup://{$filename}", true);
+
+            if (!$backup_file || !file_exists($backup_file)) {
+                $this->jsonResponse(['status' => 'error', 'message' => 'Backup file not found']);
+                return;
+            }
+
+            if (!Utils::endsWith($filename, '.zip', false)) {
+                $this->jsonResponse(['status' => 'error', 'message' => 'Invalid backup file format']);
+                return;
+            }
+
+            $zip = new \ZipArchive();
+            $result = $zip->open($backup_file);
+            if ($result !== true) {
+                $this->jsonResponse(['status' => 'error', 'message' => 'Cannot open backup archive']);
+                return;
+            }
+
+            $file_count = $zip->numFiles;
+            $top_level = [];
+            $total_size = 0;
+
+            for ($i = 0; $i < $file_count; $i++) {
+                $stat = $zip->statIndex($i);
+                if ($stat) {
+                    $total_size += $stat['size'];
+                    $parts = explode('/', trim($stat['name'], '/'), 2);
+                    $top_level[$parts[0]] = true;
+                }
+            }
+
+            $zip->close();
+
+            $this->jsonResponse([
+                'status' => 'success',
+                'file_count' => $file_count,
+                'total_size' => $total_size,
+                'top_level' => array_keys($top_level),
+                'is_pre_restore' => (strpos($filename, 'pre_restore_backup') !== false),
+            ]);
+
+        } catch (\Exception $e) {
+            $this->jsonResponse(['status' => 'error', 'message' => 'Analysis failed: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Remove all files/folders in target directory except protected paths
+     */
+    protected function cleanBeforeExtract($targetDir, array $protectedNames)
+    {
+        $entries = @scandir($targetDir);
+        if ($entries === false) {
+            return;
+        }
+
+        foreach ($entries as $entry) {
+            if ($entry === '.' || $entry === '..') {
+                continue;
+            }
+
+            // Skip protected paths
+            if (in_array($entry, $protectedNames, true)) {
+                continue;
+            }
+
+            $path = $targetDir . DS . $entry;
+
+            if (is_dir($path)) {
+                Folder::delete($path);
+            } else {
+                @unlink($path);
+            }
         }
     }
 

@@ -3,14 +3,14 @@
 ![Grav Version](https://img.shields.io/badge/Grav-1.7+-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Author](https://img.shields.io/badge/author-Dr%20Droid-blue.svg)
-![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)
+![Version](https://img.shields.io/badge/version-1.3.0-blue.svg)
 
-A Grav CMS plugin that adds **restore functionality** to the admin backup page.  
-Easily restore your site from any backup with automatic pre-restore backup creation for safety.
+A Grav CMS plugin that adds **restore functionality** to the admin backup page. 
+Easily restore your site from any backup with automatic pre-restore backup creation.
 
 ## Features
 
-- ↺ **Restore Button** - Adds a Restore button next to each backup in the Admin backups list
+- ↺ **Restore Button** - Add restore buttons to each backup in the admin backup page
 - 🎨 **Visual Distinction** - Grey buttons for pre-restore backups, blue for regular backups
 - 🔄 **Confirmation Modal** - Double-check before restoring (configurable message)
 - 🔒 **Automatic Pre-Restore Backup** - Creates a backup before restoring.
@@ -21,6 +21,8 @@ Easily restore your site from any backup with automatic pre-restore backup creat
 - 📊 **Real-Time Progress Streaming** - Live step-by-step progress via Server-Sent Events with percentage display and animated progress bar
 - 🕐 **Time Column** - Backup time displayed directly below the date in the backups table
 - 🌐 **Bilingual** - Full support for English and French
+- 🔀 **Restore Modes** - Choose between "Add & Overwrite" (merge) or "Clean Restore" for each restore operation
+- 📋 **Backup Analysis** - View file count and folder structure from the backup before restoring
 
 
 ## Installation
@@ -30,14 +32,14 @@ Easily restore your site from any backup with automatic pre-restore backup creat
 1. Download the [latest release](https://github.com/DrDroid-FR/grav-plugin-admin-backup-restore/releases/latest/)
 2. Extract the archive to `user/plugins/`
 3. Rename the folder to `admin-backup-restore`
-4. Clear the Grav cache : ```bash bin/grav clear-cache to clear the Grav cache```
+4. Clear the Grav cache
 
 ### Via GPM
 
 Use the gpm direct-install command: 
 
 ```bash
-bin/gpm direct-install https://github.com/DrDroid-FR/grav-plugin-admin-backup-restore/releases/latest/download/admin-backup-restore-1.2.0.zip
+bin/gpm direct-install https://github.com/DrDroid-FR/grav-plugin-admin-backup-restore/releases/latest/download/backup-restore-main.zip
 ```
 
 ## Configuration
@@ -48,6 +50,8 @@ After installation, go to **Plugins** → **Admin Backup Restore** to configure:
 |--------|-------------|---------|
 | Plugin Enabled | Enable/disable the plugin | Yes |
 | Create Automatic Backup | Create backup before restore | Yes |
+| Default Restore Mode | Default mode shown in restore dialog (merge or clean) | Add & Overwrite |
+| Restore Confirmation Message | Custom message shown before restore | *(default message)* |
 | Required Permissions | Who can restore backups | Super Admin |
 | Folders to Exclude | Comma-separated folders to exclude from pre-restore backup | backup, cache, images, logs, tmp |
 | Enable Debug Logging | Enable/disable Debug | No |
@@ -57,8 +61,21 @@ After installation, go to **Plugins** → **Admin Backup Restore** to configure:
 1. Navigate to **Tools** → **Backups** in the admin panel
 2. You'll see a **Restore** button (↻) next to each backup
 3. Click the button to restore that backup
-4. A confirmation modal will appear
-5. Confirm to start the restore process
+4. A confirmation modal will appear showing backup analysis (file count, top-level folders)
+5. Choose your **restore mode** (see below)
+6. Confirm to start the restore process
+
+### Restore Modes
+
+When restoring a regular backup, you can choose between two modes:
+
+#### Add & Overwrite (Merge)
+Only adds new files and overwrites existing ones. Files on disk that are **not** in the backup archive will be **kept**. This is the traditional behavior — useful when you want to update specific files without removing anything else.
+
+#### Clean Restore
+Removes all existing site files first (except protected paths: `backup/`, `cache/`, `logs/`, `tmp/`), then extracts the backup. The site will **match the backup exactly** — no leftover files from the previous state. This is the recommended mode when restoring an old backup on a site with a different file structure (e.g., custom page templates on a fresh Grav install).
+
+> **Note:** Pre-restore backups always use **Clean Restore** mode automatically — no choice needed.
 
 ### Visual Button Indicators
 
@@ -69,11 +86,11 @@ After installation, go to **Plugins** → **Admin Backup Restore** to configure:
 
 The restore process uses **Server-Sent Events (SSE)** to stream real-time updates to the browser. You'll see a live progress bar with percentage and step-by-step messages.
 
-The progress bar pulses during the two longest operations (creating backup and extracting) to indicate activity. The final success message displays additional details (pre-restore backup filename, .git status, etc.)
+The progress bar pulses during the two longest operations (creating backup and extracting) to indicate activity. The final success message displays additional details (pre-restore backup filename, .git status, restore mode used, etc.)
 
 ## Excluded Folders
 
-The automatic pre-restore backup excludes standard folders by default but you can customize these exclusions in the plugin configuration page and also exclude specific subfolders.
+The automatic pre-restore backup excludes standard folders by default but you can customize these exclusions in the plugin configuration page and even use subfolder exclusions
 
 For example:
 
@@ -91,8 +108,7 @@ This will exclude:
 - Admin Plugin 1.10+
 - PHP 7.4+
 
-For general information on Grav backups, see the official documentation:
-[https://learn.getgrav.org/18/advanced/backups](https://learn.getgrav.org/18/advanced/backups)
+For general information on Grav backups, see the official documentation: https://learn.getgrav.org/18/advanced/backups
 
 ## Acknowledgements
 

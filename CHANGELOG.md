@@ -2,6 +2,23 @@
 
 All notable changes to this plugin will be documented in this file.
 
+## [1.3.0] - 2026-03-31
+
+### Added
+- **Restore mode selection**: Users can now choose between "Add & Overwrite" (merge) and "Clean Restore" before confirming a restore
+- **Clean restore mode**: Removes all existing site files (except protected paths: backup, cache, logs, tmp) before extracting the archive, ensuring the site matches the backup exactly
+- **Backup analysis endpoint** (`task:analyzeRestore`): Returns zip metadata (file count, total size, top-level entries) before the restore modal is shown
+- **Backup info box** in confirmation modal: Displays file count and top-level folder structure from the backup archive
+- `default_restore_mode` config option (select: merge/clean) to set the default mode shown in the restore dialog
+- `cleanBeforeExtract()` method for safe recursive cleanup with protected path exclusions
+- Pre-restore backups always use clean restore mode (no choice needed)
+- New translation keys (EN + FR): `RESTORE_MODE_LABEL`, `RESTORE_MODE_MERGE`, `RESTORE_MODE_MERGE_DESC`, `RESTORE_MODE_CLEAN`, `RESTORE_MODE_CLEAN_DESC`, `RESTORE_BACKUP_CONTAINS`, `RESTORE_FILES`, `RESTORE_TOP_LEVEL`
+
+### Changed
+- Confirmation modal now fetches backup analysis before displaying, showing metadata alongside the restore options
+- Restore URL now includes `restore_mode` parameter passed to the SSE endpoint
+- `onAdminControllerInit` now handles both `backupRestore` and `analyzeRestore` tasks
+
 ## [1.2.0] - 2026-03-25
 
 ### Added
@@ -60,3 +77,22 @@ All notable changes to this plugin will be documented in this file.
 - Confirmation dialog before restore
 - Bilingual support (English and French)
 - Clean notification modal with centered icons
+
+### Features
+- **Restore Button**: Add restore buttons to each backup in the admin backup page
+- **Pre-Restore Backup**: Creates a backup before restoring (excludes cache, images, logs, tmp, backup folders by default)
+- **Smart Detection**: Skips pre-restore backup when restoring a pre_restore backup
+- **Visual Distinction**: Grey buttons for pre_restore backups, blue for regular backups
+- **Configurable Exclusions**: Custom folders to exclude from pre-restore backup
+
+### Configuration Options
+- Plugin Enabled (toggle)
+- Create Automatic Backup Before Restore (toggle)
+- Restore Confirmation Message (text)
+- Required Permissions (select)
+- Folders to Exclude from Pre-Restore Backup (text)
+
+### Requirements
+- Grav CMS 1.7+
+- Admin Plugin 1.10+
+- PHP 7.4+

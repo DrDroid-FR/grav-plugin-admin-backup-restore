@@ -160,10 +160,31 @@
 
     function showRestoreConfirm(restoreUrl, backupTitle) {
         const translations = getTranslations();
-        
+
         // Determine if this is a pre_restore backup
         const isPreRestore = backupTitle.toLowerCase().includes('pre restore');
-        
+
+        // Build analyze URL from restore URL (swap task:backupRestore -> task:analyzeRestore)
+        const analyzeUrl = restoreUrl.replace('/task:backupRestore/', '/task:analyzeRestore/');
+
+        // Fetch backup analysis before showing the modal
+        fetch(analyzeUrl, { method: 'GET', credentials: 'same-origin' })
+            .then(function(response) { return response.json(); })
+            .then(function(analysis) {
+                if (analysis.status === 'success') {
+                    showRestoreConfirmWithAnalysis(restoreUrl, backupTitle, isPreRestore, analysis, translations);
+                } else {
+                    // Analysis failed, show modal without analysis info
+                    showRestoreConfirmWithAnalysis(restoreUrl, backupTitle, isPreRestore, null, translations);
+                }
+            })
+            .catch(function() {
+                // Network error, show modal without analysis info
+                showRestoreConfirmWithAnalysis(restoreUrl, backupTitle, isPreRestore, null, translations);
+            });
+    }
+
+    function showRestoreConfirmWithAnalysis(restoreUrl, backupTitle, isPreRestore, analysis, translations) {
         // Customize message based on backup type
         let message;
         if (isPreRestore) {
@@ -171,20 +192,20 @@
         } else {
             message = translations.RESTORE_CONFIRM_MESSAGE || 'Are you sure you want to restore this backup? A backup of the current site will be created automatically before restoring.';
         }
-        
-        // Create custom translations object with the appropriate message
+
         const customTranslations = {
             ...translations,
             RESTORE_CONFIRM_MESSAGE: message
         };
-        
-        // Always use custom modal (not Remodal or browser confirm)
-        showConfirmModal(customTranslations, restoreUrl, backupTitle, isPreRestore);
+
+        showConfirmModal(customTranslations, restoreUrl, backupTitle, isPreRestore, analysis);
     }
 
-    function showConfirmModal(translations, restoreUrl, backupTitle, isPreRestore) {
+    function showConfirmModal(translations, restoreUrl, backupTitle, isPreRestore, analysis) {
         // Create a flag to track if restore is in progress
         let isRestoreInProgress = false;
+        // Track selected restore mode (use config default)
+        let selectedMode = window.admin_default_restore_mode || 'merge';
         
         // Create a nice confirmation modal
         const modal = document.createElement('div');
@@ -260,8 +281,49 @@
         html += '<div style="padding: 28px 32px; text-align: center;">' +
             '<p style="margin: 0 0 8px; color: #374151; font-size: 16px; line-height: 1.6;">' + firstPart + '</p>' +
             (secondPart ? '<p style="margin: 0 0 16px; color: #6b7280; font-size: 14px; line-height: 1.5;">' + secondPart + '</p>' : '') +
-            '<p style="margin: 0; padding: 16px; background: #f3f4f6; border-radius: 8px; color: #111827; font-weight: 600; font-size: 15px;">' + backupTitle + '</p>' +
-        '</div>';
+            '<p style="margin: 0; padding: 16px; background: #f3f4f6; border-radius: 8px; color: #111827; font-weight: 600; font-size: 15px;">' + backupTitle + '</p>';
+
+        // Show analysis info if available
+        if (analysis && analysis.status === 'success') {
+            html += '<div style="margin-top: 16px; padding: 12px 16px; background: #eff6ff; border-radius: 8px; border: 1px solid #bfdbfe; text-align: left;">' +
+                '<p style="margin: 0 0 4px; color: #1e40af; font-size: 13px; font-weight: 600;">' + (translations.RESTORE_BACKUP_CONTAINS || 'Backup contents:') + '</p>' +
+                '<p style="margin: 0; color: #3b82f6; font-size: 13px;">' +
+                    (analysis.file_count || 0) + ' ' + (translations.RESTORE_FILES || 'files') +
+                    ' &middot; ' + analysis.top_level.length + ' ' + (translations.RESTORE_TOP_LEVEL || 'top-level entries') +
+                '</p>' +
+            '</div>';
+        }
+
+        // Show restore mode selection (not for pre-restore backups)
+        if (!isPreRestore) {
+            html += '<div style="margin-top: 16px; text-align: left;">' +
+                '<p style="margin: 0 0 10px; color: #374151; font-size: 14px; font-weight: 600;">' + (translations.RESTORE_MODE_LABEL || 'Restore mode:') + '</p>';
+
+            // Merge mode radio
+            const mergeChecked = selectedMode === 'merge';
+            const cleanChecked = selectedMode === 'clean';
+
+            html += '<label id="mode-merge-label" style="display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border: 2px solid ' + (mergeChecked ? '#6366f1' : '#d1d5db') + '; border-radius: 8px; margin-bottom: 8px; cursor: pointer; background: ' + (mergeChecked ? '#eef2ff' : 'white') + '; transition: all 0.2s;">' +
+                '<input type="radio" name="restore_mode" value="merge"' + (mergeChecked ? ' checked' : '') + ' style="margin-top: 3px; accent-color: #6366f1;">' +
+                '<span>' +
+                    '<span style="display: block; color: #111827; font-size: 14px; font-weight: 600;">' + (translations.RESTORE_MODE_MERGE || 'Add & Overwrite') + '</span>' +
+                    '<span style="display: block; color: #6b7280; font-size: 12px; margin-top: 2px; line-height: 1.4;">' + (translations.RESTORE_MODE_MERGE_DESC || 'Only add new files and overwrite existing ones. Files not in the backup will be kept.') + '</span>' +
+                '</span>' +
+            '</label>';
+
+            // Clean mode radio
+            html += '<label id="mode-clean-label" style="display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border: 2px solid ' + (cleanChecked ? '#6366f1' : '#d1d5db') + '; border-radius: 8px; cursor: pointer; background: ' + (cleanChecked ? '#eef2ff' : 'white') + '; transition: all 0.2s;">' +
+                '<input type="radio" name="restore_mode" value="clean"' + (cleanChecked ? ' checked' : '') + ' style="margin-top: 3px; accent-color: #6366f1;">' +
+                '<span>' +
+                    '<span style="display: block; color: #111827; font-size: 14px; font-weight: 600;">' + (translations.RESTORE_MODE_CLEAN || 'Clean Restore') + '</span>' +
+                    '<span style="display: block; color: #6b7280; font-size: 12px; margin-top: 2px; line-height: 1.4;">' + (translations.RESTORE_MODE_CLEAN_DESC || 'Remove all existing site files first, then restore. The site will match the backup exactly.') + '</span>' +
+                '</span>' +
+            '</label>';
+
+            html += '</div>';
+        }
+
+        html += '</div>';
         
         // Footer with buttons
         const buttonGradient = isPreRestore
@@ -318,7 +380,23 @@
         // Add event listeners
         const cancelBtn = modal.querySelector('#cancel-restore-btn');
         const confirmBtn = modal.querySelector('#confirm-restore-btn');
-        
+
+        // Radio button visual state management
+        const radios = modal.querySelectorAll('input[name="restore_mode"]');
+        for (var r = 0; r < radios.length; r++) {
+            radios[r].addEventListener('change', function() {
+                selectedMode = this.value;
+                var mergeLabel = modal.querySelector('#mode-merge-label');
+                var cleanLabel = modal.querySelector('#mode-clean-label');
+                if (mergeLabel && cleanLabel) {
+                    mergeLabel.style.borderColor = selectedMode === 'merge' ? '#6366f1' : '#d1d5db';
+                    mergeLabel.style.background = selectedMode === 'merge' ? '#eef2ff' : 'white';
+                    cleanLabel.style.borderColor = selectedMode === 'clean' ? '#6366f1' : '#d1d5db';
+                    cleanLabel.style.background = selectedMode === 'clean' ? '#eef2ff' : 'white';
+                }
+            });
+        }
+
         cancelBtn.addEventListener('click', function() {
             // Only allow closing if restore is not in progress
             if (!isRestoreInProgress) {
@@ -329,10 +407,16 @@
         confirmBtn.addEventListener('click', function() {
             // Set the flag to indicate restore is in progress
             isRestoreInProgress = true;
-            
+
+            // Append restore_mode to the restore URL
+            var finalUrl = restoreUrl;
+            if (!isPreRestore && selectedMode) {
+                finalUrl = restoreUrl.replace('/task:backupRestore/', '/task:backupRestore/restore_mode:' + selectedMode + '/');
+            }
+
             // Update confirmation modal to show progress instead of closing it
             updateModalForProgress(modal, translations, isPreRestore);
-            performRestoreWithModalUpdates(restoreUrl, isPreRestore, modal);
+            performRestoreWithModalUpdates(finalUrl, isPreRestore, modal);
         });
         
         // Close on backdrop click - only if restore is NOT in progress
@@ -589,7 +673,15 @@
             RESTORE_STARTED: 'Restore started...',
             RESTORE_CREATING_PREBACKUP: 'Creating pre-restore backup...',
             RESTORE_RESTORING: 'Restoring from backup... Please wait !',
-            RESTORE_FINISH: 'Restore complete ! Refreshing...'
+            RESTORE_FINISH: 'Restore complete ! Refreshing...',
+            RESTORE_MODE_LABEL: 'Restore mode:',
+            RESTORE_MODE_MERGE: 'Add & Overwrite',
+            RESTORE_MODE_MERGE_DESC: 'Only add new files and overwrite existing ones. Files not in the backup will be kept.',
+            RESTORE_MODE_CLEAN: 'Clean Restore',
+            RESTORE_MODE_CLEAN_DESC: 'Remove all existing site files first, then restore. The site will match the backup exactly.',
+            RESTORE_BACKUP_CONTAINS: 'Backup contents:',
+            RESTORE_FILES: 'files',
+            RESTORE_TOP_LEVEL: 'top-level entries'
         };
         
         if (typeof Admin !== 'undefined' && Admin.translations && Admin.translations.PLUGIN_ADMIN_BACKUP_RESTORE) {
