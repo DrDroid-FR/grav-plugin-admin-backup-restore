@@ -14,8 +14,13 @@ bugs: https://github.com/DrDroid-FR/grav-plugin-admin-backup-restore/issues
 license: MIT
 
 dependencies:
+  - { name: grav, version: '>=1.7.0' }
   - admin
   - backup
+
+compatibility:
+  grav:
+    - '1.7'
 
 form:
   validation: loose
