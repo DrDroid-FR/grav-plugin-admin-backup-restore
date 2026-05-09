@@ -1,6 +1,6 @@
 # Admin Backup Restore Plugin for GRAV CMS
 
-![Grav Version](https://img.shields.io/badge/Grav-1.7+-blue.svg)
+![Grav Version](https://img.shields.io/badge/Grav-1.7-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Author](https://img.shields.io/badge/author-Dr%20Droid-blue.svg)
 ![Version](https://img.shields.io/badge/version-1.3.0-blue.svg)
@@ -108,7 +108,7 @@ This will exclude:
 - Admin Plugin 1.10+
 - PHP 7.4+
 
-For general information on Grav backups, see the official documentation: https://learn.getgrav.org/18/advanced/backups
+For general information on Grav backups, see the official documentation: https://learn.getgrav.org/17/advanced/backups
 
 ## Acknowledgements
 
