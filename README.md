@@ -3,7 +3,7 @@
 ![Grav Version](https://img.shields.io/badge/Grav-1.7-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Author](https://img.shields.io/badge/author-Dr%20Droid-blue.svg)
-![Version](https://img.shields.io/badge/version-1.3.0-blue.svg)
+![Version](https://img.shields.io/badge/version-1.3.0b-blue.svg)
 
 A Grav CMS plugin that adds **restore functionality** to the admin backup page. 
 Easily restore your site from any backup with automatic pre-restore backup creation.
@@ -104,7 +104,7 @@ This will exclude:
 
 ## Requirements
 
-- Grav CMS 1.7+
+- Grav CMS 1.7.x only
 - Admin Plugin 1.10+
 - PHP 7.4+
 
