@@ -1,6 +1,10 @@
 # Changelog
 
 All notable changes to this plugin will be documented in this file.
+## [1.3.0b] - 2026-03-31
+
+### Added
+- **Mandatory compatibility flag** as the plugin is NOT 2.x compatible
 
 ## [1.3.0] - 2026-03-31
 
